@@ -19,9 +19,6 @@ This is one of the implementation of the following [paper](https://aclanthology.
 }
 ```
 
-# Known issues
-- Low performance compared to official implementation (see [Performance can be obtained](https://github.com/gotutiyan/gector#performance_can_be_obtained)).
-
 # Differences from other implementations
 - Official: [grammarly/gector](https://github.com/grammarly/gector)
     - Without AllenNLP
@@ -86,7 +83,7 @@ python ensemble.py \
     --output_file <out>
 ```
 
-# Performances can be obtained
+# Performances obtained
 
 I performed experiments using this implementation. Trained models are also obtained from Hugging Face Hub.
 - All models below are trained on all of stages 1, 2, and 3 (10 epochs each). 
@@ -123,7 +120,7 @@ I performed experiments using this implementation. Trained models are also obtai
 |Model|CoNLL14 (P/R/F0.5)|BEA19-test (P/R/F0.5)|Note|
 |:--|:-:|:-:|:--|
 |BERT(base) + RoBERTa(base) + XLNet(base) [[Omelianchuk+ 2020]](https://aclanthology.org/2020.bea-1.16/)|78.2/41.5/66.5|78.9/58.2/73.6||
-|gotutiyan/gector-bert-base-cased-5k + gotutiyan/gector-roberta-base-5k + gotutiyan/gector-xlnet-base-cased-5k|80.9/33.3/63.0||The ensemble method is different from [Omelianchuk+ 2020](https://aclanthology.org/2020.bea-1.16/).|
+|gotutiyan/gector-bert-base-cased-5k + gotutiyan/gector-roberta-base-5k + gotutiyan/gector-xlnet-base-cased-5k|80.9/33.3/63.0|83.5/48.7/73.1|The ensemble method is different from [Omelianchuk+ 2020](https://aclanthology.org/2020.bea-1.16/).|
 
 
 
