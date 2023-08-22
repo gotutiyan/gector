@@ -26,6 +26,12 @@ def need_add_prefix_space(model_id):
             return True
     return False
 
+def has_add_pooling_layer(model_id):
+        for m in ['xlnet', 'deberta']:
+            if m in model_id:
+                return False
+        return True
+
 def solve_model_id(model_id):
     if model_id == 'deberta-base':
         return 'microsoft/deberta-base'
@@ -156,7 +162,8 @@ def main(args):
             d_label2id=d_label2id,
             p_dropout=args.p_dropout,
             max_length=args.max_len,
-            label_smoothing=args.label_smoothing
+            label_smoothing=args.label_smoothing,
+            has_add_pooling_layer=has_add_pooling_layer(args.model_id)
         )
         model = GECToR(config=gector_config)
     train_dataset.append_vocab(

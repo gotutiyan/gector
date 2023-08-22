@@ -18,6 +18,7 @@ class GECToRConfig:
         max_length: int=128,
         label_smoothing: float=0.0,
         initializer_range: float=0.02,
+        has_add_pooling_layer: bool=True,
         **kwards
     ):
         self.model_id = model_id
@@ -43,6 +44,7 @@ class GECToRConfig:
         self.max_length=max_length
         self.label_smoothing=label_smoothing
         self.initializer_range = initializer_range
+        self.has_add_pooling_layer = has_add_pooling_layer
 
     def save_pretrained(self, save_dir):
         os.makedirs(save_dir, exist_ok=True)

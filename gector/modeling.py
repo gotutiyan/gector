@@ -36,7 +36,7 @@ class GECToR(nn.Module):
         super().__init__()
         self.config = config
         self.tokenizer = AutoTokenizer.from_pretrained(self.config.model_id)
-        if self.has_add_pooling_layer(self.config.model_id):
+        if self.config.has_add_pooling_layer:
             self.bert = AutoModel.from_pretrained(
                 self.config.model_id,
                 add_pooling_layer=False
@@ -75,13 +75,6 @@ class GECToR(nn.Module):
         for param in self.bert.parameters():
             param.requires_grad = tune
         return
-
-    @staticmethod
-    def has_add_pooling_layer(model_id):
-        for id in ['xlnet', 'deberta']:
-            if id in model_id:
-                return False
-        return True
     
     def forward(
         self,
@@ -199,7 +192,7 @@ class GECToR(nn.Module):
             if 'GECToR_gotutiyan' not in card.data['tags']:
                 raise ValueError('Please specify the model_id that has "GECToR_gotutiyan" tag.')
             dir = snapshot_download(restore_dir, repo_type="model")
-            print(dir)
+            # print(dir)
             config = GECToRConfig.from_pretrained(dir)
             model = GECToR(config)
             model.load_state_dict(torch.load(
