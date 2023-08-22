@@ -238,7 +238,7 @@ tokenizer = AutoTokenizer.from_pretrained(path)
 To tweak two parameters in the inference, please use `predict_tweak.py`.  
 The following example tweaks both of parameters in `{0, 0.1, 0.2 ... 0.9}`. `kc` is a keep confidence and `mep` is a minimum error probability threshold.
 ```sh
-python predict.py \
+python predict_tweak.py \
     --input <raw text file> \
     --restore_dir outputs/sample/best \
     --kc_min 0 \
