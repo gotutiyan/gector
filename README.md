@@ -39,8 +39,10 @@ wget https://github.com/grammarly/gector/raw/master/data/verb-form-vocab.txt
 ```
 
 # Usage
-I will published pre-trained weights on Hugging Face Hub. Please refer to [Performance can be obtained](https://github.com/gotutiyan/gector#performance_can_be_obtained).
+- I will published pre-trained weights on Hugging Face Hub. Please refer to [Performances obtained](https://github.com/gotutiyan/gector#performances_obtained).
 
+- Note that this implementation does not support probabilistic ensembling. See [Ensemble](https://github.com/gotutiyan/gector#ensemble).
+ 
 CLI
 ```sh
 python predict.py \
@@ -74,32 +76,82 @@ corrected = predict(
 print(corrected)
 ```
 
-- This implementation does not support probabilistic ensemble inference. Please use majority voting ensemble [[Tarnavskyi+ 2022]](https://aclanthology.org/2022.acl-long.266/) instead.
-```sh
-wget https://github.com/MaksTarnavskyi/gector-large/raw/master/ensemble.py
-python ensemble.py \
-    --source_file <source> \
-    --target_files <hyp1> <hyp2> ... \
-    --output_file <out>
-```
-
 # Performances obtained
 
 I performed experiments using this implementation. Trained models are also obtained from Hugging Face Hub.
-- All models below are trained on all of stages 1, 2, and 3 (10 epochs each). 
-    - Note that the number of epochs for stage1 is smaller than official setting (= 20 epochs). The reasons for this were (1) the results were competitive the results in the paper even at 10 epochs, and (2) I did not want to occupy as much computational resources in my laboratory as possible.
+
+<details>
+<summary>The details of experimental settings: </summary>
+
+- All models below are trained on all of stages 1, 2, and 3.
+
+### Configurations
+- The common training config is the following:
+```json
+{
+    "restore_vocab_official": "data/output_vocabulary/",
+    "max_len": 80,
+    "n_epochs": 10,
+    "p_dropout": 0.0,
+    "lr": 1e-05,
+    "cold_lr": 0.001,
+    "accumulation": 1,
+    "label_smoothing": 0.0,
+    "num_warmup_steps": 500,
+    "lr_scheduler_type": "constant"
+}
+```
+
+For stage1, 
+```json
+{
+    "batch_size": 256,
+    "n_cold_epochs": 2
+}
+```
+For stage2, 
+```json
+{
+    "batch_size": 128,
+    "n_cold_epochs": 2
+}
+```
+For stage3,
+```json
+{
+    "batch_size": 128,
+    "n_cold_epochs": 0
+}
+```
+
+### Datasets
+
+|Stage|Train Datasets (# sents.)|Validation Dataset (# sents.)|
+|:-:|:--|:--|
+|1|PIE-synthetic (8,865,347, a1 split of [this](https://drive.google.com/file/d/1bl5reJ-XhPEfEaPjvO45M7w0yN-0XGOA/view))|BEA19-dev (i.e. W&I+LOCNESS-dev, 4,382)|
+|2|BEA19-train: FCE-train + W&I+LOCNESS-train + Lang-8 + NUCLE, without src=trg pairs (561,290)|BEA19-dev|
+|3|W&I+LOCNESS-train (34,304)|BEA19-dev|
+
+- Note that the number of epochs for stage1 is smaller than official setting (= 20 epochs). The reasons for this are (1) the results were competitive the results in the paper even at 10 epochs, and (2) I did not want to occupy as much computational resources in my laboratory as possible.
 - The tag vocabulary is the same as [official one](https://github.com/grammarly/gector/blob/master/data/output_vocabulary/labels.txt).
 - I trained on three different seeds (10,11,12) for each model, and use the one with the best performance.
     - Futhermore, I tweaked a keep confidence and a sentence-level minimum error probability threshold (from 0 to 0.9, 0.1 steps each) for each best model. 
-    - Finally, the checkpoint with the highest F0.5 on BEA-dev is used. 
+    - Finally, the checkpoint with the highest F0.5 on BEA19-dev is used. 
     - The number of iterations is 5.
-- Used ERRANT for the BEA-dev evaluation.
-- Used [CodaLab](https://codalab.lisn.upsaclay.fr/competitions/4057) for the BEA-test evaluation.
+
+### Evaluation
+
+- Used ERRANT for the BEA19-dev evaluation.
+    - I merely used official reference M2 file for the evaluation. Basically, the edit spans of reference M2 should be obtained again with ERRANT (`errant_m2 -auto`). However, I do not know if many research do that, and it seems that they do not. Thus I also do not that.
+- Used [CodaLab](https://codalab.lisn.upsaclay.fr/competitions/4057) for the BEA19-test evaluation.
 - Used M2 Scorer for the CoNLL14 evaluation.
 
-### Single setting
+</details>
 
-- "Training time" is the total time for stages 1, 2, and 3 (including preprocessing) when two RTX 3090s are used.
+
+
+
+### Single setting
 
 |Model|Confidence|Threshold|BEA19-dev (P/R/F0.5)|CoNLL14 (P/R/F0.5)|BEA19-test (P/R/F0.5)|
 |:--|:-:|:-:|:-:|:-:|:-:|
@@ -117,6 +169,7 @@ I performed experiments using this implementation. Trained models are also obtai
 |gotutiyan/gector-deberta-large-5k|TBA|||||
 
 ### Ensemble setting
+
 |Model|CoNLL14 (P/R/F0.5)|BEA19-test (P/R/F0.5)|Note|
 |:--|:-:|:-:|:--|
 |BERT(base) + RoBERTa(base) + XLNet(base) [[Omelianchuk+ 2020]](https://aclanthology.org/2020.bea-1.16/)|78.2/41.5/66.5|78.9/58.2/73.6||
@@ -235,6 +288,7 @@ tokenizer = AutoTokenizer.from_pretrained(path)
 ```
 
 ### Tweak parameters
+
 To tweak two parameters in the inference, please use `predict_tweak.py`.  
 The following example tweaks both of parameters in `{0, 0.1, 0.2 ... 0.9}`. `kc` is a keep confidence and `mep` is a minimum error probability threshold.
 ```sh
@@ -265,4 +319,15 @@ for mep in `seq 0 0.1 0.9` ; do
 # Refer to $RESTORE_DIR/outputs/tweak_output/kc${kc}_mep${mep}.txt in the evaluation scripts
 done
 done
+```
+
+### Ensemble
+
+- This implementation does not support probabilistic ensemble inference. Please use majority voting ensemble [[Tarnavskyi+ 2022]](https://aclanthology.org/2022.acl-long.266/) instead.
+```sh
+wget https://github.com/MaksTarnavskyi/gector-large/raw/master/ensemble.py
+python ensemble.py \
+    --source_file <source> \
+    --target_files <hyp1> <hyp2> ... \
+    --output_file <out>
 ```
