@@ -153,28 +153,37 @@ For stage3,
 
 ### Single setting
 
+#### Base-5k
 |Model|Confidence|Threshold|BEA19-dev (P/R/F0.5)|CoNLL14 (P/R/F0.5)|BEA19-test (P/R/F0.5)|
 |:--|:-:|:-:|:-:|:-:|:-:|
-|BERT (base) [[Omelianchuk+ 2020]](https://aclanthology.org/2020.bea-1.16/)||||72.1/42.0/63.0|71.5/55.7/67.6|
-|RoBERTa (base) [[Omelianchuk+ 2020]](https://aclanthology.org/2020.bea-1.16/)||||73.9/41.5/64.0|77.2/55.1/71.5|
-|XLNet (base) [[Omelianchuk+ 2020]](https://aclanthology.org/2020.bea-1.16/)|||66.0/33.8/55.5|77.5/40.1/65.3|79.2/53.9/72.4|
+|BERT [[Omelianchuk+ 2020]](https://aclanthology.org/2020.bea-1.16/)||||72.1/42.0/63.0|71.5/55.7/67.6|
+|RoBERTa [[Omelianchuk+ 2020]](https://aclanthology.org/2020.bea-1.16/)||||73.9/41.5/64.0|77.2/55.1/71.5|
+|XLNet [[Omelianchuk+ 2020]](https://aclanthology.org/2020.bea-1.16/)|||66.0/33.8/55.5|77.5/40.1/65.3|79.2/53.9/72.4|
+|DeBERTa [[Tarnavskyi+ 2022]](https://aclanthology.org/2022.acl-long.266/)(Table 3)|||64.2/31.8/53.8|||
 |[gotutiyan/gector-bert-base-cased-5k](https://huggingface.co/gotutiyan/gector-bert-base-cased-5k)|0.4|0.6|64.5/30.0/52.4|73.0/33.6/59.1|76.8/48.7/68.9|
 |[gotutiyan/gector-roberta-base-5k](https://huggingface.co/gotutiyan/gector-roberta-base-5k)|0.5|0.0|65.8/31.8/54.2|74.6/35.7/61.3|78.5/51.0/70.8|
 |[gotutiyan/gector-xlnet-base-cased-5k](https://huggingface.co/gotutiyan/gector-xlnet-base-cased-5k)|0.5|0.0|67.2/30.7/54.3|77.2/34.4/61.8|78.8/49.9/70.7|
-|DeBERTa (base) [[Tarnavskyi+ 2022]](https://aclanthology.org/2022.acl-long.266/)|||64.2/31.8/53.8|||
 |[gotutiyan/gector-deberta-base-5k](https://huggingface.co/gotutiyan/gector-deberta-base-5k)|0.4|0.3|64.1/34.5/54.7|73.7/38.8/62.5|76.0/54.2/70.4|
-|gotutiyan/gector-bert-large-cased-5k|TBA|||||
-|gotutiyan/gector-roberta-large-5k|TBA|||||
-|gotutiyan/gector-xlnet-large-cased-5k|TBA|||||
-|gotutiyan/gector-deberta-large-5k|TBA|||||
+
+#### Large-5k
+|Model|Confidence|Threshold|BEA19-dev (P/R/F0.5)|CoNLL14 (P/R/F0.5)|BEA19-test (P/R/F0.5)|
+|:--|:-:|:-:|:-:|:-:|:-:|
+|RoBERTa [[Tarnavskyi+ 2022]](https://aclanthology.org/2022.acl-long.266/)|||65.7/33.8/55.3||80.7/53.3/73.2|
+|XLNet [[Tarnavskyi+ 2022]](https://aclanthology.org/2022.acl-long.266/)|||64.2/35.1/55.1|||
+|DeBERTa [[Tarnavskyi+ 2022]](https://aclanthology.org/2022.acl-long.266/)|||66.3/32.7/55.0|||
+|DeBERTa (basetag) [[Mesham+ 2023]](https://aclanthology.org/2023.findings-eacl.119)|||68.1/38.1/58.8||77.8/56.7/72.4|
+|[gotutiyan/gector-bert-large-cased-5k](https://huggingface.co/gotutiyan/gector-bert-large-cased-5k)|0.5|0.0|64.7/32.0/53.7|75.9/36.8/62.6|77.2/50.4/69.8|
+|[gotutiyan/gector-roberta-large-5k](https://huggingface.co/gotutiyan/gector-roberta-large-5k)|0.4|0.6|65.7/34.3/55.5|75.4/37.1/62.5|78.5/53.7/71.9|
+|[gotutiyan/gector-xlnet-large-cased-5k](https://huggingface.co/gotutiyan/gector-xlnet-large-cased-5k)|0.3|0.4|63.8/36.5/55.5|74.6/41.6/64.4|75.9/56.7/71.1|
+|[gotutiyan/gector-deberta-large-5k](https://huggingface.co/gotutiyan/gector-deberta-large-5k)|0.5|0.4|68.7/33.1/56.6|80.0/36.9/64.8|81.1/52.8/73.2|
 
 ### Ensemble setting
-
 |Model|CoNLL14 (P/R/F0.5)|BEA19-test (P/R/F0.5)|Note|
 |:--|:-:|:-:|:--|
 |BERT(base) + RoBERTa(base) + XLNet(base) [[Omelianchuk+ 2020]](https://aclanthology.org/2020.bea-1.16/)|78.2/41.5/66.5|78.9/58.2/73.6||
 |gotutiyan/gector-bert-base-cased-5k + gotutiyan/gector-roberta-base-5k + gotutiyan/gector-xlnet-base-cased-5k|80.9/33.3/63.0|83.5/48.7/73.1|The ensemble method is different from [Omelianchuk+ 2020](https://aclanthology.org/2020.bea-1.16/).|
-
+|RoBERTa(large, 10k) + XLNet(large, 5k) + DeBERTa(large, 10k) [[Tarnavskyi+ 2022]](https://aclanthology.org/2022.acl-long.266/)||84.4/54.4/76.0||
+|gotutiyan/gector-roberta-large-5k + gotutiyan/gector-xlnet-large-cased-5k + gotutiyan/gector-deberta-large-5k|81.7/37.0/65.8|84.0/53.4/75.4|
 
 
 # How to train
