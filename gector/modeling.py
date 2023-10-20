@@ -1,11 +1,11 @@
-from transformers import AutoModel, AutoTokenizer, AutoConfig
+from transformers import AutoModel, AutoTokenizer, AutoConfig, PreTrainedModel
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
 from torch.nn import CrossEntropyLoss
 from dataclasses import dataclass
 from .configuration import GECToRConfig
-from typing import List
+from typing import List, Union, Optional, Tuple
 import os
 import json
 from huggingface_hub import snapshot_download, ModelCard
@@ -28,44 +28,57 @@ class GECToRPredictionOutput:
     pred_label_ids: torch.Tensor = None
     max_error_probability: torch.Tensor = None
 
-class GECToR(nn.Module):
+class GECToR(PreTrainedModel):
+    config_class = GECToRConfig
     def __init__(
         self,
         config: GECToRConfig=None
     ):
-        super().__init__()
+        super().__init__(config)
         self.config = config
-        self.tokenizer = AutoTokenizer.from_pretrained(self.config.model_id)
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            self.config.model_id
+        )
         if self.config.has_add_pooling_layer:
             self.bert = AutoModel.from_pretrained(
                 self.config.model_id,
                 add_pooling_layer=False
             )
         else:
-            self.bert = AutoModel.from_pretrained(self.config.model_id)
-        self.bert.resize_token_embeddings(self.bert.config.vocab_size + 1) # +1 is for $START token
+            self.bert = AutoModel.from_pretrained(
+                self.config.model_id
+            )
+        # +1 is for $START token
+        self.bert.resize_token_embeddings(self.bert.config.vocab_size + 1)
         self.label_proj_layer = nn.Linear(
             self.bert.config.hidden_size,
-            config.n_labels-1
-        ) # -1 is for <PAD>
+            self.config.num_labels - 1
+        )  # -1 is for <PAD>
         self.d_proj_layer = nn.Linear(
             self.bert.config.hidden_size,
-            config.n_d_labels-1
+            self.config.d_num_labels - 1
         )
         self.dropout = nn.Dropout(self.config.p_dropout)
         self.loss_fn = CrossEntropyLoss(
             label_smoothing=self.config.label_smoothing
         )
-        self._init_weights(self.label_proj_layer)
-        self._init_weights(self.d_proj_layer)
+        
+        self.post_init()
         self.tune_bert(False)
 
-    def _init_weights(self, module):
+    def init_weight(self) -> None:
+        self._init_weights(self.label_proj_layer)
+        self._init_weights(self.d_proj_layer)
+
+    def _init_weights(self, module) -> None:
         """Initialize the weights"""
         if isinstance(module, nn.Linear):
             # Slightly different from the TF version which uses truncated_normal for initialization
             # cf https://github.com/pytorch/pytorch/pull/5617
-            module.weight.data.normal_(mean=0.0, std=self.config.initializer_range)
+            module.weight.data.normal_(
+                mean=0.0,
+                std=self.config.initializer_range
+            )
             if module.bias is not None:
                 module.bias.data.zero_()
         return
@@ -78,16 +91,29 @@ class GECToR(nn.Module):
     
     def forward(
         self,
-        input_ids,
-        attention_mask,
-        d_labels=None,
-        labels=None,
-        word_masks=None,
-        **kwards
-    ):
+        input_ids: Optional[torch.Tensor] = None,
+        attention_mask: Optional[torch.Tensor] = None,
+        token_type_ids: Optional[torch.Tensor] = None,
+        position_ids: Optional[torch.Tensor] = None,
+        head_mask: Optional[torch.Tensor] = None,
+        inputs_embeds: Optional[torch.Tensor] = None,
+        labels: Optional[torch.Tensor] = None,
+        d_labels: Optional[torch.Tensor] = None,
+        output_attentions: Optional[bool] = None,
+        output_hidden_states: Optional[bool] = None,
+        return_dict: Optional[bool] = None,
+        word_masks: Optional[torch.Tensor] = None,
+    ) -> GECToROutput:
         bert_logits = self.bert(
             input_ids,
-            attention_mask
+            attention_mask=attention_mask,
+            token_type_ids=token_type_ids,
+            position_ids=position_ids,
+            head_mask=head_mask,
+            inputs_embeds=inputs_embeds,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
         ).last_hidden_state
         logits_d = self.d_proj_layer(bert_logits)
         logits_labels = self.label_proj_layer(self.dropout(bert_logits))
@@ -95,22 +121,27 @@ class GECToR(nn.Module):
         accuracy, accuracy_d = None, None
         if d_labels is not None and labels is not None:
             pad_id = self.config.label2id[self.config.label_pad_token]
-            labels[labels == pad_id] = -100 # -100 is the default ignore_idx of CrossEntropyLoss
+            # -100 is the default ignore_idx of CrossEntropyLoss
+            labels[labels == pad_id] = -100
             d_labels[labels == -100] = -100
             loss_d = self.loss_fn(
-                logits_d.view(-1, self.config.n_d_labels-1), # -1 for <PAD>
+                logits_d.view(-1, self.config.d_num_labels - 1),  # -1 for <PAD>
                 d_labels.view(-1)
             )
             loss_labels = self.loss_fn(
-                logits_labels.view(-1, self.config.n_labels-1),
+                logits_labels.view(-1, self.config.num_labels - 1),
                 labels.view(-1)
             )
             loss = loss_d + loss_labels
 
             pred_labels = torch.argmax(logits_labels, dim=-1)
-            accuracy = torch.sum((labels == pred_labels) * word_masks) / torch.sum(word_masks)
+            accuracy = torch.sum(
+                (labels == pred_labels) * word_masks
+            ) / torch.sum(word_masks)
             pred_d = torch.argmax(logits_d, dim=-1)
-            accuracy_d = torch.sum((d_labels == pred_d) * word_masks) / torch.sum(word_masks)
+            accuracy_d = torch.sum(
+                (d_labels == pred_d) * word_masks
+            ) / torch.sum(word_masks)
 
         return GECToROutput(
             loss=loss,
@@ -169,33 +200,3 @@ class GECToR(nn.Module):
             pred_label_ids=pred_label_ids,
             max_error_probability=max_error_probability
         )
-    
-    def save_pretrained(self, save_dir):
-        os.makedirs(save_dir, exist_ok=True)
-        self.config.save_pretrained(save_dir)
-        torch.save(
-            self.state_dict(),
-            os.path.join(save_dir, 'pytorch_model.bin')
-        )
-
-    @classmethod
-    def from_pretrained(self, restore_dir):
-        if os.path.exists(restore_dir):
-            config = GECToRConfig.from_pretrained(restore_dir)
-            model = GECToR(config)
-            model.load_state_dict(torch.load(
-                os.path.join(restore_dir, 'pytorch_model.bin')
-            ))
-            return model
-        else:
-            card = ModelCard.load(restore_dir)
-            if 'GECToR_gotutiyan' not in card.data['tags']:
-                raise ValueError('Please specify the model_id that has "GECToR_gotutiyan" tag.')
-            dir = snapshot_download(restore_dir, repo_type="model")
-            # print(dir)
-            config = GECToRConfig.from_pretrained(dir)
-            model = GECToR(config)
-            model.load_state_dict(torch.load(
-                os.path.join(dir, 'pytorch_model.bin')
-            ))
-            return model
