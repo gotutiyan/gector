@@ -2,8 +2,31 @@ import argparse
 from gector.modeling import GECToR
 from transformers import AutoTokenizer
 from gector.predict import predict, load_verb_dict
+from gector.predict_verbose import predict_verbose
 import torch
+from typing import List, Dict
 
+def visualizer(iteration_log: List[List[Dict]]):
+    # Generate a string to visualize the predictions.
+    strs = ''
+    for sent_id, sent in enumerate(iteration_log):
+        strs += f'=== Line {sent_id} ===\n'
+        for itr_id, itr in enumerate(sent):
+            if itr['tag'] is None:
+                strs += ' '.join(itr['src']).replace('$START', '').strip() + '\n'
+                break
+            strs += f'== Iteration {itr_id} ==\n'
+            src_str = '|'
+            tag_str = '|'
+            for tok, tag in zip(itr['src'], itr['tag']):
+                max_len = max(len(tok), len(tag)) + 1
+                src_str += tok + ' '*(max_len - len(tok)) + '|'
+                tag_str += tag + ' '*(max_len - len(tag)) + '|'
+            strs += src_str + '\n'
+            strs += tag_str + '\n'
+        strs += '\n'
+    return strs
+                
 def main(args):
     if args.test:
         test()
@@ -14,19 +37,31 @@ def main(args):
     encode, decode = load_verb_dict(args.verb_file)
     if torch.cuda.is_available():
         model.cuda()
-    final_corrected_sents = predict(
-        model,
-        tokenizer,
-        srcs,
-        encode,
-        decode,
-        keep_confidence=args.keep_confidence,
-        min_error_prob=args.min_error_prob,
-        batch_size=args.batch_size,
-        n_iteration=args.n_iteration
-    )
+    predict_args = {
+        'model': model,
+        'tokenizer': tokenizer,
+        'srcs': srcs,
+        'encode': encode,
+        'decode': decode,
+        'keep_confidence': args.keep_confidence,
+        'min_error_prob': args.min_error_prob,
+        'batch_size': args.batch_size,
+        'n_iteration': args.n_iteration
+    }
+    if args.visualize is not None:
+        final_corrected_sents, iteration_log = predict_verbose(
+            **predict_args
+        )
+        strs = visualizer(iteration_log)
+        with open(args.visualize, 'w') as fp:
+            fp.write(strs)
+    else:
+        final_corrected_sents = predict(
+            **predict_args
+        )
     with open(args.out, 'w') as f:
         f.write('\n'.join(final_corrected_sents))
+
     print(f'=== Finished ===')
 
 def test():
@@ -109,7 +144,7 @@ def test():
 
 def get_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--input')
+    parser.add_argument('--input', required=True)
     parser.add_argument('--restore_dir', required=True)
     parser.add_argument('--verb_file', default='data/verb-form-vocab.txt')
     parser.add_argument('--n_iteration', type=int, default=5)
@@ -118,6 +153,7 @@ def get_parser():
     parser.add_argument('--min_error_prob', type=float, default=0)
     parser.add_argument('--out', default='out.txt')
     parser.add_argument('--test', action='store_true')
+    parser.add_argument('--visualize')
 
     args = parser.parse_args()
     return args
