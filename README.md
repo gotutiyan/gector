@@ -278,11 +278,12 @@ python predict.py \
 |Option|Default|Note|
 |:--|:--|:--|
 |--n_iteration|5|The number of iterations.|
-|--batch_size|128||
+|--batch_size|128|A Batch size.|
 |--keep_confidence|0.0|A bias for the $KEEP label.|
 |--min_error_prob|0.0|A sentence-level minimum error
 probability threshold|
 |--verb_file|`data/verb-form-vocab.txt`|Assume that you already have this file by [Installing]((https://github.com/gotutiyan/gector#installing)).|
+|--visualize|None|Output visualization results to a specified file.|
 
 </details>
 
@@ -295,6 +296,35 @@ path = 'outputs/sample/best'
 model = GECToR.from_pretrained(path)
 tokenizer = AutoTokenizer.from_pretrained(path)
 ```
+
+### Visualize the predictions
+
+You can use `--visualize` option to output a visualization of the predictions. It will be helpful for qualitative analyses.
+
+For example,
+```sh
+echo 'A ten years old boy go school' > demo.txt
+python predict.py \
+--restore_dir gotutiyan/gector-roberta-base-5k \
+--input demo.txt \
+--visualize visualize.txt
+```
+
+`visualize.txt` will show:
+```
+=== Line 0 ===
+== Iteration 0 ==
+|$START |A     |ten       |years                         |old   |boy   |go                     |school |
+|$KEEP  |$KEEP |$APPEND_- |$TRANSFORM_AGREEMENT_SINGULAR |$KEEP |$KEEP |$TRANSFORM_VERB_VB_VBZ |$KEEP  |
+== Iteration 1 ==
+|$START |A     |ten   |-     |year  |old   |boy   |goes       |school |
+|$KEEP  |$KEEP |$KEEP |$KEEP |$KEEP |$KEEP |$KEEP |$APPEND_to |$KEEP  |
+== Iteration 2 ==
+|$START |A     |ten   |-     |year      |old   |boy   |goes  |to    |school |
+|$KEEP  |$KEEP |$KEEP |$KEEP |$APPEND_- |$KEEP |$KEEP |$KEEP |$KEEP |$KEEP  |
+A ten - year - old boy goes to school
+```
+
 
 ### Tweak parameters
 
