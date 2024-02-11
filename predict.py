@@ -1,8 +1,11 @@
 import argparse
-from gector.modeling import GECToR
+from gector import (
+    GECToR,
+    predict,
+    load_verb_dict,
+    predict_verbose
+)
 from transformers import AutoTokenizer
-from gector.predict import predict, load_verb_dict
-from gector.predict_verbose import predict_verbose
 import torch
 from typing import List, Dict
 
