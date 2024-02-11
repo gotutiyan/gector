@@ -32,7 +32,7 @@ class GECToR(PreTrainedModel):
     config_class = GECToRConfig
     def __init__(
         self,
-        config: GECToRConfig=None
+        config: GECToRConfig
     ):
         super().__init__(config)
         self.config = config
@@ -95,7 +95,6 @@ class GECToR(PreTrainedModel):
         attention_mask: Optional[torch.Tensor] = None,
         token_type_ids: Optional[torch.Tensor] = None,
         position_ids: Optional[torch.Tensor] = None,
-        head_mask: Optional[torch.Tensor] = None,
         inputs_embeds: Optional[torch.Tensor] = None,
         labels: Optional[torch.Tensor] = None,
         d_labels: Optional[torch.Tensor] = None,
@@ -109,7 +108,6 @@ class GECToR(PreTrainedModel):
             attention_mask=attention_mask,
             token_type_ids=token_type_ids,
             position_ids=position_ids,
-            head_mask=head_mask,
             inputs_embeds=inputs_embeds,
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
