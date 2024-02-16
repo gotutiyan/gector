@@ -29,7 +29,7 @@ This is one of the implementation of the following [paper](https://aclanthology.
     - Use Accelerate for distributed training
 
 # Installing
-Confirmed that it works on python3.8.10.
+Confirmed that it works on python3.11.0.
 ```sh
 pip install -r requirements.txt
 # Donwload the verb dictionary in advance
@@ -54,8 +54,7 @@ python predict.py \
 API
 ```py
 from transformers import AutoTokenizer
-from gector.modeling import GECToR
-from gector.predict import predict, load_verb_dict
+from gector import GECToR, predict, load_verb_dict
 
 model_id = 'gotutiyan/gector-roberta-base-5k'
 model = GECToR.from_pretrained(model_id)
@@ -290,7 +289,7 @@ probability threshold|
 Or, to use as API,
 ```py
 from transformers import AutoTokenizer
-from gector.modeling import GECToR
+from gector import GECToR
 
 path = 'outputs/sample/best'
 model = GECToR.from_pretrained(path)
