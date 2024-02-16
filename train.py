@@ -1,9 +1,9 @@
 import argparse
 from transformers import AutoTokenizer, get_scheduler
-from gector.modeling import GECToR
-from gector.configuration import GECToRConfig
-from gector.dataset import load_dataset
-from gector.vocab import (
+from gector import (
+    GECToR,
+    GECToRConfig,
+    load_dataset,
     build_vocab,
     load_vocab_from_config,
     load_vocab_from_official
@@ -110,10 +110,12 @@ def main(args):
     # To easily specify the model_id 
     args.model_id = solve_model_id(args.model_id)
     print('Start ...')
-    torch.manual_seed(args.seed)
-    np.random.seed(args.seed)
     random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    torch.cuda.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = True
+    torch.use_deterministic_algorithms = True
 
     accelerator = Accelerator(gradient_accumulation_steps=args.accumulation)
     if args.restore_dir is not None:
@@ -159,6 +161,7 @@ def main(args):
         gector_config = GECToRConfig(
             model_id=args.model_id,
             label2id=label2id,
+            id2label={v: k for k, v in label2id.items()},
             d_label2id=d_label2id,
             p_dropout=args.p_dropout,
             max_length=args.max_len,
