@@ -38,6 +38,10 @@ cd data
 wget https://github.com/grammarly/gector/raw/master/data/verb-form-vocab.txt
 ```
 
+### License
+- Code: MIT license  
+- Trained models on Hugging Face Hub: Only non-commercial purposes.
+
 # Usage
 - I will published pre-trained weights on Hugging Face Hub. Please refer to [Performances obtained](https://github.com/gotutiyan/gector#performances_obtained).
 
