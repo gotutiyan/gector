@@ -9,6 +9,7 @@ from typing import List, Union, Optional, Tuple
 import os
 import json
 from huggingface_hub import snapshot_download, ModelCard
+from .vocab import load_vocab_from_official
 
 @dataclass
 class GECToROutput:
@@ -198,3 +199,95 @@ class GECToR(PreTrainedModel):
             pred_label_ids=pred_label_ids,
             max_error_probability=max_error_probability
         )
+    
+    @classmethod
+    def from_official_pretrained(
+        cls,
+        pretrained_model_name_or_path: str,
+        special_tokens_fix: int,  # 0 or 1
+        transformer_model: str,
+        vocab_path: str,
+        p_dropout: float=0.0,
+        max_length=80,
+        label_smoothing=0.0,
+    ) -> "GECToR":
+        '''Load official weights.
+        
+        Args:
+            pretrained_model_name_or_path (str): Path to the official weights.
+                E.g. "bert_0_gectorv2.th".
+            special_tokens_fix (int): If 0, is assume that the embedding layer does not extended to add $START.
+                E.g. 0 if the model name is "bert_0_gectorv2.th", or 1 if the model name is "roberta_1_gectorv2".
+            transformer_model (str): A model id of the huggingface.
+                E.g. "bert-base-cased".
+            vocab_path (str): Path to the official vocaburaly directory.
+                E.g. "data/output_vocabulary".
+            p_drouput (float): The probability for the dropout layer. Only for training.
+            max_length (int): If the number of subwords is longer than this, it will be truncated.
+            label_smoothing (float): The epsilon for the label smoothing in CrossEntropyLoss. Only for training.
+
+        Returns: 
+            GECToR: The instance of GECToR.
+        '''
+        def has_add_pooling_layer(model_id):
+            for m in ['xlnet', 'deberta']:
+                if m in model_id:
+                    return False
+            return True
+    
+        label2id, d_label2id = load_vocab_from_official(vocab_path)
+
+        # The order of labels is
+        #   Ours    : [OOV, KEEP, DELETE, ..., PADDING]
+        #   Official: [KEEP, DELETE, ..., OOV, PADDING]
+        # The following is align the ours to officila one.
+        for l in label2id.keys():
+            label2id[l] = label2id[l] - 1
+        label2id['<OOV>'] = len(label2id) - 2
+        label2id['<PAD>'] = len(label2id) - 1
+
+        config = GECToRConfig(
+            model_id=transformer_model,
+            label2id=label2id,
+            id2label={v: k for k, v in label2id.items()},
+            d_label2id=d_label2id,
+            p_dropout=p_dropout,
+            max_length=max_length,
+            label_smoothing=label_smoothing,
+            has_add_pooling_layer=has_add_pooling_layer(transformer_model),
+            is_official_model=True
+        )
+        model = GECToR(config=config)
+        
+        official_state_dict = torch.load(pretrained_model_name_or_path)
+        # Resolve the official parameter names.
+        new_state_dict = dict()
+        for k, v in official_state_dict.items():
+            if 'pool' in k:
+                continue
+            if 'position_id' in k:
+                continue
+            k = k.replace('text_field_embedder.token_embedder_bert.bert_model.', 'bert.') \
+                .replace('tag_labels_projection_layer._module', 'label_proj_layer') \
+                .replace('tag_detect_projection_layer._module', 'd_proj_layer')
+            if not special_tokens_fix and 'word_embedding' in k:
+                # The official model does not extend the input dimension 
+                #   of the embedding layer when special_tokens_fix is 0 
+                #   (i.e. does not add $START token).
+                # In contrast, our model always extends it, 
+                #   so we add a dummy row to the embedding layer to match the dimensions.
+                v = torch.cat([v, torch.zeros_like(v[0:1])], dim=0)
+            if 'd_proj_layer' in k:
+                # The shape of the official layer is (d_model, 4).
+                # The output dimension 4 corresponds to $CORRECT, $INCORRECT, @@UNKNOWN@@, @@PADDING@@ in this order.
+                # In contrast, the shape of our layer is (d_model, 2), which means using only $CORRECT and $INCORRECT.
+                # Thus we use only first and second rows.
+                v = v[:2]
+            if 'label_proj_layer' in k:
+                # Similar to detection projection layer,
+                #   we do not use @@PADDING@@ as a prediction labels, so we remove its row from the label projection layer.
+                v = v[:-1]
+            new_state_dict[k] = v
+        model.load_state_dict(new_state_dict)
+        return model
+        

@@ -53,12 +53,9 @@ def process_token(
     if '$APPEND_' in label:
         return token + ' ' + label.replace('$APPEND_', '')
     elif token == '$START':
-        # [unused1] token cannot be replaced with another token and cannot be deleted.
         return token
     elif label in ['<PAD>', '<OOV>', '$KEEP']:
         return token
-    elif '$APPEND_' in label:
-        return token + ' ' + label.replace('$APPEND_', '')
     elif '$TRANSFORM_' in label:
         return g_transform_processer(token, label, encode, decode)
     elif '$REPLACE_' in label:
@@ -128,14 +125,17 @@ def _predict(
     itr = list(range(0, len(srcs), batch_size))
     pred_labels = []
     no_corrections = []
+    no_correction_ids = [model.config.label2id[l] for l in ['$KEEP', '<OOV>', '<PAD>']]
     for i in tqdm(itr):
+        # The official models was trained without special tokens, e.g. [CLS] [SEP].
         batch = tokenizer(
             srcs[i:i+batch_size],
             return_tensors='pt',
             max_length=model.config.max_length,
             padding='max_length',
             truncation=True,
-            is_split_into_words=True
+            is_split_into_words=True,
+            add_special_tokens=not model.config.is_official_model
         )
         batch['word_masks'] = torch.tensor(
             get_word_masks_from_word_ids(
@@ -163,7 +163,7 @@ def _predict(
                     continue
                 if idx != previous_word_idx:
                     labels.append(outputs.pred_labels[i][j])
-                    if outputs.pred_label_ids[i][j] > 2:
+                    if outputs.pred_label_ids[i][j] not in no_correction_ids:
                         no_correct = False
                 previous_word_idx = idx
             # print(no_correct, labels)
