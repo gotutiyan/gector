@@ -42,12 +42,16 @@ wget https://github.com/grammarly/gector/raw/master/data/verb-form-vocab.txt
 - Code: MIT license  
 - Trained models on Hugging Face Hub: Only non-commercial purposes.
 
-# Usage
-- I will published pre-trained weights on Hugging Face Hub. Please refer to [Performances obtained](https://github.com/gotutiyan/gector#performances_obtained).
+# Usage 
 
+- This implementation supports both our models and the official models.
+- I will published pre-trained weights on Hugging Face Hub. Please refer to [Performances obtained](https://github.com/gotutiyan/gector#performances_obtained).
 - Note that this implementation does not support probabilistic ensembling. See [Ensemble](https://github.com/gotutiyan/gector#ensemble).
  
-CLI
+
+### For our models
+
+#### CLI
 ```sh
 python predict.py \
     --input <raw text file> \
@@ -55,7 +59,7 @@ python predict.py \
     --out <path to output file>
 ```
 
-API
+#### API
 ```py
 from transformers import AutoTokenizer
 from gector import GECToR, predict, load_verb_dict
@@ -77,6 +81,90 @@ corrected = predict(
     batch_size=2,
 )
 print(corrected)
+```
+
+### For official models
+
+#### CLI
+
+- Please set `--from_official` and related options starting with `--official.`.
+- `data/output_vocabulary` is in [here](https://github.com/grammarly/gector/tree/master/data/output_vocabulary)
+```
+# An example to use official BERT model.
+# Download the official model.
+wget https://grammarly-nlp-data-public.s3.amazonaws.com/gector/bert_0_gectorv2.th
+# Predict with the official model.
+python predict.py \
+    --input <raw text file> \
+    --restore bert_0_gectorv2.th \
+    --out out.txt \
+    --from_official \
+    --official.vocab_path data/output_vocabulary \
+    --official.transformer_model bert-base-cased \
+    --official.special_tokens_fix 0 \
+    --official.max_length 80
+```
+
+<details>
+<summary>Exmaples for other official models: </summary>
+
+- RoBERTa
+```
+wget https://grammarly-nlp-data-public.s3.amazonaws.com/gector/roberta_1_gectorv2.th
+python predict.py \
+    --input <raw text file> \
+    --restore roberta_1_gectorv2.th \
+    --out out.txt \
+    --from_official \
+    --official.vocab_path data/output_vocabulary \
+    --official.transformer_model roberta-base \
+    --official.special_tokens_fix 1
+```
+
+- XLNet
+```
+wget https://grammarly-nlp-data-public.s3.amazonaws.com/gector/xlnet_0_gectorv2.th
+python predict.py \
+    --input <raw text file> \
+    --restore xlnet_0_gectorv2.th \
+    --out out.txt \
+    --from_official \
+    --official.vocab_path data/output_vocabulary \
+    --official.transformer_model xlnet-base-cased \
+    --official.special_tokens_fix 0
+```
+
+- GECToR-2024 (RoBERTa large) [[Omelianchuk+ 24]](https://aclanthology.org/2024.bea-1.3/)
+```
+wget https://grammarly-nlp-data-public.s3.amazonaws.com/GECToR-2024/gector-2024-roberta-large.th
+python predict.py \
+    --input <raw text file> \
+    --restore gector-2024-roberta-large.th \
+    --out out.txt \
+    --from_official \
+    --official.vocab_path data/output_vocabulary \
+    --official.transformer_model roberta-large \
+    --official.special_tokens_fix 1
+```
+
+</details>
+
+#### API
+
+- Use `GECToR.from_official_pretrained()` instead of `GECToR.from_pretrained()`.
+
+```py
+from transformers import AutoTokenizer
+from gector import GECToR, predict, load_verb_dict
+model = GECToR.from_official_pretrained(
+    'bert_0_gectorv2.th',
+    special_tokens_fix=0,
+    transformer_model='bert-base-cased',
+    vocab_path='data/output_vocabulary',
+    max_length=80
+)
+tokenizer = AutoTokenizer.from_pretrained('bert-base-cased')
+encode, decode = load_verb_dict('data/verb-form-vocab.txt')
 ```
 
 # Performances obtained

@@ -15,6 +15,7 @@ class GECToRConfig(PretrainedConfig):
         label_smoothing: float=0.0,
         has_add_pooling_layer: bool=True,
         initializer_range: float=0.02,
+        is_official_model: bool=False,
         **kwards
     ):
         super().__init__(**kwards)
@@ -36,3 +37,4 @@ class GECToRConfig(PretrainedConfig):
         self.label_smoothing = label_smoothing
         self.has_add_pooling_layer = has_add_pooling_layer
         self.initializer_range = initializer_range
+        self.is_official_model = is_official_model

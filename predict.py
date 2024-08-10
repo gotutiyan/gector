@@ -9,6 +9,12 @@ from transformers import AutoTokenizer
 import torch
 from typing import List, Dict
 
+def need_add_prefix_space(model_id):
+    for m in ['roberta', 'deberta']:
+        if m in model_id:
+            return True
+    return False
+
 def visualizer(iteration_log: List[List[Dict]]):
     # Generate a string to visualize the predictions.
     strs = ''
@@ -34,8 +40,28 @@ def main(args):
     if args.test:
         test()
         return
-    model = GECToR.from_pretrained(args.restore_dir).eval()
-    tokenizer = AutoTokenizer.from_pretrained(args.restore_dir)
+    if args.from_official:
+        # Use official weights.
+        model = GECToR.from_official_pretrained(
+            args.restore_dir,
+            special_tokens_fix=getattr(args, 'official.special_tokens_fix'),
+            transformer_model=getattr(args, 'official.transformer_model'),
+            vocab_path=getattr(args, 'official.vocab_path'),
+            max_length=getattr(args, 'official.max_length')
+        ).eval()
+        tokenizer = AutoTokenizer.from_pretrained(
+            getattr(args, 'official.transformer_model'),
+            add_prefix_space=need_add_prefix_space(getattr(args, 'official.transformer_model'))
+        )
+        if getattr(args, 'official.special_tokens_fix'):
+            # if special_tokens_fix is 1, the official model was trained 
+            #   by adding $START token. So we add $START to the tokenizer.
+            tokenizer.add_special_tokens(
+                {'additional_special_tokens': ['$START']}
+            )
+    else:
+        model = GECToR.from_pretrained(args.restore_dir).eval()
+        tokenizer = AutoTokenizer.from_pretrained(args.restore_dir)
     srcs = open(args.input).read().rstrip().split('\n')
     encode, decode = load_verb_dict(args.verb_file)
     if torch.cuda.is_available():
@@ -157,7 +183,26 @@ def get_parser():
     parser.add_argument('--out', default='out.txt')
     parser.add_argument('--test', action='store_true')
     parser.add_argument('--visualize')
-
+    parser.add_argument(
+        '--from_official', action='store_true',
+        help='Specify this if you load official weights.'
+    )
+    parser.add_argument(
+        '--official.vocab_path', default='data/output_vocabulary',
+        help='The vocabulary directory when using official model.'
+    )
+    parser.add_argument(
+        '--official.transformer_model', default='bert-base-cased',
+        help='The model id of HF trasnformers when using official model.'
+    )
+    parser.add_argument(
+        '--official.special_tokens_fix', type=int, default=0,
+        help='0 or 1 according to the training setting of the official model.'
+    )
+    parser.add_argument(
+        '--official.max_length', type=int, default=80,
+        help='If the number of subwords is longer than this, it will be truncated.'
+    )
     args = parser.parse_args()
     return args
 
