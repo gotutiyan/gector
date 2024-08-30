@@ -5,7 +5,7 @@ import torch.nn as nn
 from torch.nn import CrossEntropyLoss
 from dataclasses import dataclass
 from .configuration import GECToRConfig
-from typing import List, Union, Optional, Tuple
+from typing import List, Union, Optional, Tuple, Dict
 import os
 import json
 from huggingface_hub import snapshot_download, ModelCard
@@ -165,32 +165,49 @@ class GECToR(PreTrainedModel):
                 input_ids,
                 attention_mask
             )
-            probability_labels = F.softmax(outputs.logits_labels, dim=-1)
-            probability_d = F.softmax(outputs.logits_d, dim=-1)
+        probability_labels = F.softmax(outputs.logits_labels, dim=-1)
+        probability_d = F.softmax(outputs.logits_d, dim=-1)
+        tweaked_probaility = probability_labels.clone()
+        # Deal with the bias of $KEEP tag
+        keep_index = self.config.label2id[self.config.keep_label]
+        tweaked_probaility[:, :, keep_index] += keep_confidence
+        # Deal with the sentence-level minimum errror probability
+        incor_idx = self.config.d_label2id[self.config.incorrect_label]
+        probability_d = probability_d[:, :, incor_idx]  # (batch, seq_len)
+        max_error_probability = torch.max(
+            probability_d * word_masks, dim=-1
+        )[0]  # (batch, )
+        # If the max-prob of the sentence is lower than the specified threshold, 
+        #   all predictions will be $KEEP.
+        tweaked_probaility[max_error_probability < min_error_prob, :, keep_index] \
+                                                                    = float('inf')
+        pred_label_ids = torch.argmax(tweaked_probaility, dim=-1)
 
-            # Get actual labels considering inference parameters.
-            keep_index = self.config.label2id[self.config.keep_label]
-            probability_labels[:, :, keep_index] += keep_confidence
-            incor_idx = self.config.d_label2id[self.config.incorrect_label]
-            probability_d = probability_d[:, :, incor_idx]
-            max_error_probability = torch.max(probability_d * word_masks, dim=-1)[0]
-            probability_labels[max_error_probability < min_error_prob, :, keep_index] \
-                                                                        = float('inf')
-            pred_label_ids = torch.argmax(probability_labels, dim=-1)
+        # Note:
+        # The original paper mentions that the threshould is 
+        #   for sentence-level error probability.
+        # However, the original implementation also uses the threshould
+        #   for token-level tag predictions.
+        # Our implementation follows this way.
+        max_tag_probabilities = torch.max(tweaked_probaility, dim=-1)[0]  # (batch, seq_len)
+        pred_label_ids[max_tag_probabilities < min_error_prob] = keep_index 
 
-            def convert_ids_to_labels(ids, id2label):
-                labels = []
-                for id in ids.tolist():
-                    labels.append(id2label[id])
-                return labels
+        def convert_ids_to_labels(
+            ids: torch.Tensor,
+            id2label: Dict[int, str]
+        ):
+            labels = []
+            for id in ids.tolist():
+                labels.append(id2label[id])
+            return labels
 
-            pred_labels = []
-            for ids in pred_label_ids:
-                labels = convert_ids_to_labels(
-                    ids,
-                    self.config.id2label
-                )
-                pred_labels.append(labels)
+        pred_labels = []
+        for ids in pred_label_ids:
+            labels = convert_ids_to_labels(
+                ids,
+                self.config.id2label
+            )
+            pred_labels.append(labels)
 
         return GECToRPredictionOutput(
             probability_labels=probability_labels,
