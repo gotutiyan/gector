@@ -6,10 +6,8 @@ from torch.nn import CrossEntropyLoss
 from dataclasses import dataclass
 from .configuration import GECToRConfig
 from typing import List, Union, Optional, Tuple
-import os
-import json
-from huggingface_hub import snapshot_download, ModelCard
 from .vocab import load_vocab_from_official
+from .utils import has_args_add_pooling
 
 @dataclass
 class GECToROutput:
@@ -94,7 +92,6 @@ class GECToR(PreTrainedModel):
         self,
         input_ids: Optional[torch.Tensor] = None,
         attention_mask: Optional[torch.Tensor] = None,
-        token_type_ids: Optional[torch.Tensor] = None,
         position_ids: Optional[torch.Tensor] = None,
         inputs_embeds: Optional[torch.Tensor] = None,
         labels: Optional[torch.Tensor] = None,
@@ -107,7 +104,6 @@ class GECToR(PreTrainedModel):
         bert_logits = self.bert(
             input_ids,
             attention_mask=attention_mask,
-            token_type_ids=token_type_ids,
             position_ids=position_ids,
             inputs_embeds=inputs_embeds,
             output_attentions=output_attentions,
@@ -229,11 +225,6 @@ class GECToR(PreTrainedModel):
         Returns: 
             GECToR: The instance of GECToR.
         '''
-        def has_add_pooling_layer(model_id):
-            for m in ['xlnet', 'deberta']:
-                if m in model_id:
-                    return False
-            return True
     
         label2id, d_label2id = load_vocab_from_official(vocab_path)
 
@@ -254,7 +245,7 @@ class GECToR(PreTrainedModel):
             p_dropout=p_dropout,
             max_length=max_length,
             label_smoothing=label_smoothing,
-            has_add_pooling_layer=has_add_pooling_layer(transformer_model),
+            has_add_pooling_layer=has_args_add_pooling(transformer_model),
             is_official_model=True
         )
         model = GECToR(config=config)
