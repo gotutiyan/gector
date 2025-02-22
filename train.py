@@ -19,18 +19,7 @@ from accelerate import DistributedDataParallelKwargs
 import numpy as np
 import random
 from collections import OrderedDict
-
-def need_add_prefix_space(model_id):
-    for m in ['roberta', 'deberta']:
-        if m in model_id:
-            return True
-    return False
-
-def has_add_pooling_layer(model_id):
-        for m in ['xlnet', 'deberta']:
-            if m in model_id:
-                return False
-        return True
+from gector.utils import has_args_add_pooling
 
 def solve_model_id(model_id):
     if model_id == 'deberta-base':
@@ -121,10 +110,9 @@ def main(args):
     if args.restore_dir is not None:
         tokenizer = AutoTokenizer.from_pretrained(args.restore_dir)
     else:
-        add_prefix_space = need_add_prefix_space(args.model_id)
         tokenizer = AutoTokenizer.from_pretrained(
             args.model_id,
-            add_prefix_space=add_prefix_space
+            add_prefix_space=True
         )
     tokenizer.add_special_tokens(
         {'additional_special_tokens': ['$START']}
@@ -166,7 +154,7 @@ def main(args):
             p_dropout=args.p_dropout,
             max_length=args.max_len,
             label_smoothing=args.label_smoothing,
-            has_add_pooling_layer=has_add_pooling_layer(args.model_id)
+            has_add_pooling_layer=has_args_add_pooling(args.model_id)
         )
         model = GECToR(config=gector_config)
     train_dataset.append_vocab(

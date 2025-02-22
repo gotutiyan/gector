@@ -31,7 +31,7 @@ This is one of the implementation of the following [paper](https://aclanthology.
 # Installing
 Confirmed that it works on python3.11.0.
 ```sh
-pip install -r requirements.txt
+pip install git+https://github.com/gotutiyan/gector
 # Donwload the verb dictionary in advance
 mkdir data
 cd data
@@ -53,7 +53,7 @@ wget https://github.com/grammarly/gector/raw/master/data/verb-form-vocab.txt
 
 #### CLI
 ```sh
-python predict.py \
+gector-predict \
     --input <raw text file> \
     --restore_dir gotutiyan/gector-roberta-base-5k \
     --out <path to output file>
@@ -232,17 +232,16 @@ For stage3,
 
 ### Evaluation
 
-- Used ERRANT for the BEA19-dev evaluation.
-    - I merely used official reference M2 file for the evaluation. Basically, the edit spans of reference M2 should be obtained again with ERRANT (`errant_m2 -auto`). However, I do not know if many research do that, and it seems that they do not. Thus I also do not that.
+- Used ERRANT for the BEA19-dev evaluation. Note that I re-extract edits of the official M2 reference via ERRANT.
 - Used [CodaLab](https://codalab.lisn.upsaclay.fr/competitions/4057) for the BEA19-test evaluation.
 - Used M2 Scorer for the CoNLL14 evaluation.
 
 </details>
 
 
-
-
 ### Single setting
+
+The slightly lower result for bea19-dev in [[Tarnavskyi+ 2022]] is probably due to not re-extracting the reference M2.
 
 #### Base-5k
 |Model|Confidence|Threshold|BEA19-dev (P/R/F0.5)|CoNLL14 (P/R/F0.5)|BEA19-test (P/R/F0.5)|
@@ -251,10 +250,10 @@ For stage3,
 |RoBERTa [[Omelianchuk+ 2020]](https://aclanthology.org/2020.bea-1.16/)||||73.9/41.5/64.0|77.2/55.1/71.5|
 |XLNet [[Omelianchuk+ 2020]](https://aclanthology.org/2020.bea-1.16/)|||66.0/33.8/55.5|77.5/40.1/65.3|79.2/53.9/72.4|
 |DeBERTa [[Tarnavskyi+ 2022]](https://aclanthology.org/2022.acl-long.266/)(Table 3)|||64.2/31.8/53.8|||
-|[gotutiyan/gector-bert-base-cased-5k](https://huggingface.co/gotutiyan/gector-bert-base-cased-5k)|0.4|0.6|64.5/30.0/52.4|73.0/33.6/59.1|76.8/48.7/68.9|
-|[gotutiyan/gector-roberta-base-5k](https://huggingface.co/gotutiyan/gector-roberta-base-5k)|0.5|0.0|65.8/31.8/54.2|74.6/35.7/61.3|78.5/51.0/70.8|
-|[gotutiyan/gector-xlnet-base-cased-5k](https://huggingface.co/gotutiyan/gector-xlnet-base-cased-5k)|0.5|0.0|67.2/30.7/54.3|77.2/34.4/61.8|78.8/49.9/70.7|
-|[gotutiyan/gector-deberta-base-5k](https://huggingface.co/gotutiyan/gector-deberta-base-5k)|0.4|0.3|64.1/34.5/54.7|73.7/38.8/62.5|76.0/54.2/70.4|
+|[gotutiyan/gector-bert-base-cased-5k](https://huggingface.co/gotutiyan/gector-bert-base-cased-5k)|0.4|0.5|67.0/32.2/55.1|73.8/36.2/61.17|77.3/50.9/70.0|
+|[gotutiyan/gector-roberta-base-5k](https://huggingface.co/gotutiyan/gector-roberta-base-5k)|0.3|0.6|67.0/36.9/57.6|73.4/40.7/63.2|77.2/54.4/71.2|
+|[gotutiyan/gector-xlnet-base-cased-5k](https://huggingface.co/gotutiyan/gector-xlnet-base-cased-5k)|0.0|0.6|67.1/35.9/57.2|74.0/40.5/63.5|77.4/54.7/71.5|
+|[gotutiyan/gector-deberta-base-5k](https://huggingface.co/gotutiyan/gector-deberta-base-5k)|0.3|0.6|67.9/36.3/57.8|75.2/40.5/64.2|77.8/55.4/72.0|
 
 #### Large-5k
 |Model|Confidence|Threshold|BEA19-dev (P/R/F0.5)|CoNLL14 (P/R/F0.5)|BEA19-test (P/R/F0.5)|
@@ -263,18 +262,18 @@ For stage3,
 |XLNet [[Tarnavskyi+ 2022]](https://aclanthology.org/2022.acl-long.266/)|||64.2/35.1/55.1|||
 |DeBERTa [[Tarnavskyi+ 2022]](https://aclanthology.org/2022.acl-long.266/)|||66.3/32.7/55.0|||
 |DeBERTa (basetag) [[Mesham+ 2023]](https://aclanthology.org/2023.findings-eacl.119)|||68.1/38.1/58.8||77.8/56.7/72.4|
-|[gotutiyan/gector-bert-large-cased-5k](https://huggingface.co/gotutiyan/gector-bert-large-cased-5k)|0.5|0.0|64.7/32.0/53.7|75.9/36.8/62.6|77.2/50.4/69.8|
-|[gotutiyan/gector-roberta-large-5k](https://huggingface.co/gotutiyan/gector-roberta-large-5k)|0.4|0.6|65.7/34.3/55.5|75.4/37.1/62.5|78.5/53.7/71.9|
-|[gotutiyan/gector-xlnet-large-cased-5k](https://huggingface.co/gotutiyan/gector-xlnet-large-cased-5k)|0.3|0.4|63.8/36.5/55.5|74.6/41.6/64.4|75.9/56.7/71.1|
-|[gotutiyan/gector-deberta-large-5k](https://huggingface.co/gotutiyan/gector-deberta-large-5k)|0.5|0.4|68.7/33.1/56.6|80.0/36.9/64.8|81.1/52.8/73.2|
+|[gotutiyan/gector-bert-large-cased-5k](https://huggingface.co/gotutiyan/gector-bert-large-cased-5k)|0.5|0.0|66.7/34.4/56.1|75.9/39.1/63.9|77.5/52.4/70.7|
+|[gotutiyan/gector-roberta-large-5k](https://huggingface.co/gotutiyan/gector-roberta-large-5k)|0.0|0.6|68.8/38.8/59.6|75.4/40.9/64.5|79.0/56.2/73.1|
+|[gotutiyan/gector-xlnet-large-cased-5k](https://huggingface.co/gotutiyan/gector-xlnet-large-cased-5k)|0.0|0.6|69.1/36.8/58.8|75.9/41.7/65.2|79.1/55.8/73.0|
+|[gotutiyan/gector-deberta-large-5k](https://huggingface.co/gotutiyan/gector-deberta-large-5k)|0.0|0.6|69.3/39.5/60.3|78.2/43.2/67.3|79.2/58.0/73.8|
 
 ### Ensemble setting
-|Model|CoNLL14 (P/R/F0.5)|BEA19-test (P/R/F0.5)|Note|
-|:--|:-:|:-:|:--|
-|BERT(base) + RoBERTa(base) + XLNet(base) [[Omelianchuk+ 2020]](https://aclanthology.org/2020.bea-1.16/)|78.2/41.5/66.5|78.9/58.2/73.6||
-|gotutiyan/gector-bert-base-cased-5k + gotutiyan/gector-roberta-base-5k + gotutiyan/gector-xlnet-base-cased-5k|80.9/33.3/63.0|83.5/48.7/73.1|The ensemble method is different from [Omelianchuk+ 2020](https://aclanthology.org/2020.bea-1.16/).|
-|RoBERTa(large, 10k) + XLNet(large, 5k) + DeBERTa(large, 10k) [[Tarnavskyi+ 2022]](https://aclanthology.org/2022.acl-long.266/)||84.4/54.4/76.0||
-|gotutiyan/gector-roberta-large-5k + gotutiyan/gector-xlnet-large-cased-5k + gotutiyan/gector-deberta-large-5k|81.7/37.0/65.8|84.0/53.4/75.4|
+|Model|BEA19-dev (P/R/F0.5)|CoNLL14 (P/R/F0.5)|BEA19-test (P/R/F0.5)|Note|
+|:--|:-:|:-:|:-:|:--|
+|BERT(base) + RoBERTa(base) + XLNet(base) [[Omelianchuk+ 2020]](https://aclanthology.org/2020.bea-1.16/)||78.2/41.5/66.5|78.9/58.2/73.6||
+|gotutiyan/gector-bert-base-cased-5k + gotutiyan/gector-roberta-base-5k + gotutiyan/gector-xlnet-base-cased-5k|72.1/33.8/58.7|79.0/37.7/64.8|82.8/52.7/74.3|The ensemble method is different from [Omelianchuk+ 2020](https://aclanthology.org/2020.bea-1.16/).|
+|RoBERTa(large, 10k) + XLNet(large, 5k) + DeBERTa(large, 10k) [[Tarnavskyi+ 2022]](https://aclanthology.org/2022.acl-long.266/)|||84.4/54.4/76.0||
+|gotutiyan/gector-roberta-large-5k + gotutiyan/gector-xlnet-large-cased-5k + gotutiyan/gector-deberta-large-5k|73.9/37.5/61.9|80.7/40.9/67.6|84.1/56.0/76.4|
 
 
 # How to train
@@ -314,7 +313,7 @@ accelerate launch train.py \
 |--restore_dir|None|For training from specified checkpoint. Both weights and tag vocab will be loaded.|
 |--restore_vocab|None|To train with existing tag vocabulary. Please specify `config.json` to this. Note that weights are not loaded.|
 |--restore_vocab_official|None|Use existing tag vocabulary in the official format. Please specify like `path/to/data/output_vocabulary/`|
-|--max_len|80|Maximum length of input (subword-level length)|
+|--max_len|128|Maximum length of input (subword-level length)|
 |--n_max_labels|5000|The number of tag types.|
 |--n_epochs|10|The number of epochs.|
 |--n_cold_epochs|2|The number of epochs to train only classifier layer.|
@@ -328,10 +327,10 @@ accelerate launch train.py \
 |--lr_scheduler_type|constant|Specify leaning rate scheduler type.|
 
 NOTE: For those who are familiar with the [official implementation](https://github.com/grammarly/gector/tree/master),
-- `--tag_strategy` is not available but it is forced to keep_one.
+- `--tag_strategy` is not available and it is forced to keep_one.
 - `--skip_correct` is not available. Please remove identical pairs from your training data in advance.
 - `--patience` is not available since this implementation does not employ early stopping.
-- `--special_token_fix` is not available since this code automatically judge this one from `--model_id`.
+- `--special_token_fix` is not available since this code always adds a $START token to the vocabulary.
 
 </details>
 
@@ -358,7 +357,7 @@ The same usage of the [Usage](https://github.com/gotutiyan/gector#usage). You ca
 
 CLI
 ```sh
-python predict.py \
+gector-predict \
     --input <raw text file> \
     --restore_dir outputs/sample/best \
     --out <path to output file>
@@ -390,15 +389,15 @@ tokenizer = AutoTokenizer.from_pretrained(path)
 
 ### Visualize the predictions
 
-You can use `--visualize` option to output a visualization of the predictions. It will be helpful for qualitative analyses.
+You can use `--visualize` option to output a visualization of the iterative inference. It will be helpful for qualitative analyses.
 
 For example,
 ```sh
 echo 'A ten years old boy go school' > demo.txt
-python predict.py \
---restore_dir gotutiyan/gector-roberta-base-5k \
---input demo.txt \
---visualize visualize.txt
+gector-predict \
+    --restore_dir gotutiyan/gector-roberta-base-5k \
+    --input demo.txt \
+    --visualize visualize.txt
 ```
 
 `visualize.txt` will show:
@@ -422,7 +421,7 @@ A ten - year - old boy goes to school
 To tweak two parameters in the inference, please use `predict_tweak.py`.  
 The following example tweaks both of parameters in `{0, 0.1, 0.2 ... 0.9}`. `kc` is a keep confidence and `mep` is a minimum error probability threshold.
 ```sh
-python predict_tweak.py \
+gector-predict-tweak \
     --input <raw text file> \
     --restore_dir outputs/sample/best \
     --kc_min 0 \
@@ -441,12 +440,12 @@ models/sample/best/outputs/tweak_outputs/
 ...
 ```
 
-After that, you can determine the best parameters by doing the following:
+After that, you can determine the best parameters by:
 ```sh
-RESTORE_DIR=${1}
+RESTORE_DIR=outputs/sample/best/
 for kc in `seq 0 0.1 0.9` ; do
 for mep in `seq 0 0.1 0.9` ; do
-# Refer to $RESTORE_DIR/outputs/tweak_output/kc${kc}_mep${mep}.txt in the evaluation scripts
+# Run evaluation scripts for $RESTORE_DIR/outputs/tweak_output/kc${kc}_mep${mep}.txt
 done
 done
 ```

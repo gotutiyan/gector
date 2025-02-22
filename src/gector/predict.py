@@ -126,7 +126,7 @@ def _predict(
     pred_labels = []
     no_corrections = []
     no_correction_ids = [model.config.label2id[l] for l in ['$KEEP', '<OOV>', '<PAD>']]
-    for i in tqdm(itr):
+    for i in itr:
         # The official models was trained without special tokens, e.g. [CLS] [SEP].
         batch = tokenizer(
             srcs[i:i+batch_size],
