@@ -91,7 +91,9 @@ def main(args):
     with open(args.out, 'w') as f:
         f.write('\n'.join(final_corrected_sents))
 
-    print(f'=== Finished ===')
+def cli_main():
+    args = get_parser()
+    main(args)
 
 def test():
     data = [

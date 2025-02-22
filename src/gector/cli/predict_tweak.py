@@ -33,9 +33,10 @@ def main(args):
             )
             with open(os.path.join(output_path, f'kc{str(round(kc, 1))}_mep{str(round(mep, 1))}.txt'), 'w') as f:
                 f.write('\n'.join(final_corrected_sents))
-    print(f'=== Finished ===')
 
-
+def cli_main():
+    args = get_parser()
+    main(args)
 
 def get_parser():
     parser = argparse.ArgumentParser()

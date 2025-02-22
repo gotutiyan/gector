@@ -6,10 +6,9 @@ from torch.nn import CrossEntropyLoss
 from dataclasses import dataclass
 from .configuration import GECToRConfig
 from typing import List, Union, Optional, Tuple
-import os
-import json
-from huggingface_hub import snapshot_download, ModelCard
 from .vocab import load_vocab_from_official
+from .utils import has_args_add_pooling
+import pprint
 
 @dataclass
 class GECToROutput:
@@ -94,7 +93,6 @@ class GECToR(PreTrainedModel):
         self,
         input_ids: Optional[torch.Tensor] = None,
         attention_mask: Optional[torch.Tensor] = None,
-        token_type_ids: Optional[torch.Tensor] = None,
         position_ids: Optional[torch.Tensor] = None,
         inputs_embeds: Optional[torch.Tensor] = None,
         labels: Optional[torch.Tensor] = None,
@@ -107,7 +105,6 @@ class GECToR(PreTrainedModel):
         bert_logits = self.bert(
             input_ids,
             attention_mask=attention_mask,
-            token_type_ids=token_type_ids,
             position_ids=position_ids,
             inputs_embeds=inputs_embeds,
             output_attentions=output_attentions,
@@ -165,18 +162,35 @@ class GECToR(PreTrainedModel):
                 input_ids,
                 attention_mask
             )
+            # (batch, seq_len, num_labels)
             probability_labels = F.softmax(outputs.logits_labels, dim=-1)
+            # (batch, seq_len, num_labels)
             probability_d = F.softmax(outputs.logits_d, dim=-1)
 
-            # Get actual labels considering inference parameters.
+            # Apply the bias of $KEEP.
             keep_index = self.config.label2id[self.config.keep_label]
             probability_labels[:, :, keep_index] += keep_confidence
-            incor_idx = self.config.d_label2id[self.config.incorrect_label]
-            probability_d = probability_d[:, :, incor_idx]
-            max_error_probability = torch.max(probability_d * word_masks, dim=-1)[0]
-            probability_labels[max_error_probability < min_error_prob, :, keep_index] \
-                                                                        = float('inf')
+            # Get predcition tags. (batch, seq_len, num_labels) -> (batch, seq_len)
             pred_label_ids = torch.argmax(probability_labels, dim=-1)
+
+            # Apply the minimum error probability threshold
+            incor_idx = self.config.d_label2id[self.config.incorrect_label]
+            # (batch_size, seq_len, num_labels) -> (batch_size, seq_len)
+            probability_d_incor = probability_d[:, :, incor_idx]
+            # (batch_size, seq_len) -> (batch_size)
+            max_error_probability = torch.max(probability_d_incor * word_masks, dim=-1)[0]
+            # Sentence-level threshold.
+            #   Set the $KEEP tag to all tokens in the sentences 
+            #   that have lower maximum error prob. than thredhold.
+            pred_label_ids[
+                max_error_probability < min_error_prob, :
+            ] = keep_index
+            # Token-level threshold.
+            #   Set infinity to tokens that have lower probability than thredhold.
+            #   Note that the probaility is not detection's, but tag's one.
+            pred_label_ids[
+                torch.max(probability_labels, dim=-1)[0] < min_error_prob
+            ] = keep_index
 
             def convert_ids_to_labels(ids, id2label):
                 labels = []
@@ -191,7 +205,6 @@ class GECToR(PreTrainedModel):
                     self.config.id2label
                 )
                 pred_labels.append(labels)
-
         return GECToRPredictionOutput(
             probability_labels=probability_labels,
             probability_d=probability_d,
@@ -229,11 +242,6 @@ class GECToR(PreTrainedModel):
         Returns: 
             GECToR: The instance of GECToR.
         '''
-        def has_add_pooling_layer(model_id):
-            for m in ['xlnet', 'deberta']:
-                if m in model_id:
-                    return False
-            return True
     
         label2id, d_label2id = load_vocab_from_official(vocab_path)
 
@@ -254,7 +262,7 @@ class GECToR(PreTrainedModel):
             p_dropout=p_dropout,
             max_length=max_length,
             label_smoothing=label_smoothing,
-            has_add_pooling_layer=has_add_pooling_layer(transformer_model),
+            has_add_pooling_layer=has_args_add_pooling(transformer_model),
             is_official_model=True
         )
         model = GECToR(config=config)

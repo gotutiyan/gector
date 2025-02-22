@@ -126,7 +126,7 @@ def _predict(
     pred_labels = []
     no_corrections = []
     no_correction_ids = [model.config.label2id[l] for l in ['$KEEP', '<OOV>', '<PAD>']]
-    for i in tqdm(itr):
+    for i in itr:
         # The official models was trained without special tokens, e.g. [CLS] [SEP].
         batch = tokenizer(
             srcs[i:i+batch_size],
@@ -210,9 +210,6 @@ def predict(
         if current_srcs == []:
             # Correcting for all sentences is completed.
             break
-        # if itr > 2:
-        #     for l in current_pred_labels:
-        #         print(l)
         edited_srcs = edit_src_by_tags(
             current_srcs,
             current_pred_labels,
@@ -221,11 +218,6 @@ def predict(
         )
         to_be_processed = edited_srcs
         original_sent_idx = current_orig_idx
-        
-        # print(f'=== Iteration {itr} ===')
-        # print('\n'.join(final_edited_sents))
-        # print(to_be_processed)
-        # print(have_corrections)
     for i in range(len(to_be_processed)):
         final_edited_sents[original_sent_idx[i]] = ' '.join(to_be_processed[i]).replace('$START ', '')
     assert('-1' not in final_edited_sents)
