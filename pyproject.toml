@@ -12,7 +12,7 @@ dependencies = [
     "huggingface-hub>=0.28.1",
     "python-levenshtein>=0.26.1",
     "torch>=2.6.0",
-    "transformers>=4.48.3",
+    "transformers==4.49.0",
 ]
 
 [build-system]
