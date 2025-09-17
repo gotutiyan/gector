@@ -28,7 +28,33 @@ def solve_model_id(model_id):
         return 'microsoft/deberta-large'
     else:
         return model_id
+class EarlyStopping:
+    def __init__(self, patience=3, mode='max', min_delta=0.0):
+        self.patience = patience
+        self.mode = mode
+        self.min_delta = min_delta
+        self.num_bad_epochs = 0
+        self.best = float('-inf') if mode == 'max' else float('inf')
+        self.should_stop = False
 
+    def step(self, metric):
+        improved = False
+        if self.mode == 'max' and metric > self.best + self.min_delta:
+            improved = True
+        elif self.mode == 'min' and metric < self.best - self.min_delta:
+            improved = True
+
+        if improved:
+            self.best = metric
+            self.num_bad_epochs = 0
+        else:
+            self.num_bad_epochs += 1
+
+        if self.num_bad_epochs >= self.patience:
+            self.should_stop = True
+
+        return self.should_stop
+    
 def train(
     model,
     loader,
@@ -98,6 +124,9 @@ def valid(
 def main(args):
     # To easily specify the model_id 
     args.model_id = solve_model_id(args.model_id)
+    max_acc = -1
+    early_stopper = EarlyStopping(patience=args.early_stopper, mode='max')
+    logs = {'argparse': args.__dict__}
     print('Start ...')
     random.seed(args.seed)
     np.random.seed(args.seed)
@@ -204,10 +233,8 @@ def main(args):
     logs = {'argparse': args.__dict__}
     for e in range(args.n_epochs):
         accelerator.wait_for_everyone()
-        if isinstance(model, DistributedDataParallel):
-            module = model.module
-        else:
-            module = model
+        module = model.module if isinstance(model, DistributedDataParallel) else model
+
         step_scheduler = True
         if e < args.n_cold_epochs:
             module.tune_bert(False)
@@ -219,27 +246,18 @@ def main(args):
         else:
             pass
         print(f'=== Epoch {e} ===')
-        train_log = train(
-            model,
-            train_loader,
-            optimizer,
-            lr_scheduler,
-            accelerator,
-            e,
-            step_scheduler
-        )
-        valid_log = valid(
-            model,
-            valid_loader,
-            accelerator,
-            e
-        )
+        # Entrenamiento
+        train_log = train(model, train_loader, optimizer, lr_scheduler, accelerator, e, step_scheduler)
+        # Validación
+        valid_log = valid(model, valid_loader, accelerator, e)
+        valid_accuracy = float(valid_log.get('accuracy', 0.0))
+
         accelerator.wait_for_everyone()
         if accelerator.is_main_process:
-            if valid_log['accuracy'] > max_acc:
+            if valid_accuracy >= early_stopper.best:
                 accelerator.unwrap_model(model).save_pretrained(path_to_best)
-                max_acc = valid_log['accuracy']
                 valid_log['message'] = 'The best checkpoint has been updated.'
+
             accelerator.unwrap_model(model).save_pretrained(path_to_last)
             logs[f'Epoch {e}'] = {
                 'train_log': train_log,
@@ -247,6 +265,18 @@ def main(args):
             }
             with open(os.path.join(args.save_dir, 'log.json'), 'w') as f:
                 json.dump(logs, f, indent=2)
+
+            if early_stopper.step(valid_accuracy):
+                print(
+                    f"[EarlyStopping] No improvement en {early_stopper.patience} epochs. "
+                    f"Best accuracy: {early_stopper.best:.4f}. Stopping at epoch {e}."
+                )
+                break
+            else:
+                print(
+                    f"[EarlyStopping] Current: {valid_accuracy:.4f}, Best: {early_stopper.best:.4f}, "
+                    f"Bad epochs: {early_stopper.num_bad_epochs}/{early_stopper.patience}"
+                )
     print('finish')
 
 def get_parser():
@@ -255,6 +285,7 @@ def get_parser():
     parser.add_argument('--valid_file', required=True)
     parser.add_argument('--model_id', default='bert-base-cased')
     parser.add_argument('--batch_size', type=int, default=16)
+    parser.add_argument('--early_stopper', type=int, default=16)
     parser.add_argument('--delimeter', default='SEPL|||SEPR')
     parser.add_argument('--additional_delimeter', default='SEPL__SEPR')
     parser.add_argument('--restore_dir')
