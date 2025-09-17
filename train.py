@@ -15,7 +15,6 @@ import os
 from tqdm import tqdm
 import json
 from accelerate import Accelerator
-from accelerate import DistributedDataParallelKwargs
 import numpy as np
 import random
 from collections import OrderedDict
@@ -124,7 +123,6 @@ def valid(
 def main(args):
     # To easily specify the model_id 
     args.model_id = solve_model_id(args.model_id)
-    max_acc = -1
     early_stopper = EarlyStopping(patience=args.early_stopper, mode='max')
     logs = {'argparse': args.__dict__}
     print('Start ...')
@@ -225,7 +223,6 @@ def main(args):
     os.makedirs(path_to_last, exist_ok=True)
     tokenizer.save_pretrained(path_to_best)
     tokenizer.save_pretrained(path_to_last)
-    max_acc = -1
     print('Start training...')
     def set_lr(optimizer, lr):
         for param in optimizer.param_groups:
