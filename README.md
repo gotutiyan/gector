@@ -64,8 +64,9 @@ gector-predict \
 from transformers import AutoTokenizer
 from gector import GECToR, predict, load_verb_dict
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model_id = 'gotutiyan/gector-roberta-base-5k'
-model = GECToR.from_pretrained(model_id)
+model = GECToR.from_pretrained(model_id).to(device)
 tokenizer = AutoTokenizer.from_pretrained(model_id)
 encode, decode = load_verb_dict('data/verb-form-vocab.txt')
 srcs = [
@@ -382,8 +383,9 @@ Or, to use as API,
 from transformers import AutoTokenizer
 from gector import GECToR
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 path = 'outputs/sample/best'
-model = GECToR.from_pretrained(path)
+model = GECToR.from_pretrained(path).to(device)
 tokenizer = AutoTokenizer.from_pretrained(path)
 ```
 
