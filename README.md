@@ -63,6 +63,7 @@ gector-predict \
 ```py
 from transformers import AutoTokenizer
 from gector import GECToR, predict, load_verb_dict
+import torch
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model_id = 'gotutiyan/gector-roberta-base-5k'
@@ -157,13 +158,16 @@ python predict.py \
 ```py
 from transformers import AutoTokenizer
 from gector import GECToR, predict, load_verb_dict
+import torch
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = GECToR.from_official_pretrained(
     'bert_0_gectorv2.th',
     special_tokens_fix=0,
     transformer_model='bert-base-cased',
     vocab_path='data/output_vocabulary',
     max_length=80
-)
+).to(device)
 tokenizer = AutoTokenizer.from_pretrained('bert-base-cased')
 encode, decode = load_verb_dict('data/verb-form-vocab.txt')
 ```
@@ -382,6 +386,7 @@ Or, to use as API,
 ```py
 from transformers import AutoTokenizer
 from gector import GECToR
+import torch
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 path = 'outputs/sample/best'

@@ -144,8 +144,7 @@ def _predict(
             )
         )
         word_ids = batch.word_ids
-        if torch.cuda.is_available():
-            batch = {k:v.cuda() for k,v in batch.items()}
+        batch = {k:v.to(model.device) for k,v in batch.items()}
         outputs = model.predict(
             batch['input_ids'],
             batch['attention_mask'],
@@ -166,10 +165,8 @@ def _predict(
                     if outputs.pred_label_ids[i][j] not in no_correction_ids:
                         no_correct = False
                 previous_word_idx = idx
-            # print(no_correct, labels)
             pred_labels.append(labels)
             no_corrections.append(no_correct)
-    # print(pred_labels)
     return pred_labels, no_corrections
 
 def predict(
