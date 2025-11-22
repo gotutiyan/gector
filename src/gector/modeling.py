@@ -49,7 +49,15 @@ class GECToR(PreTrainedModel):
                 self.config.model_id
             )
         # +1 is for $START token
-        self.bert.resize_token_embeddings(self.bert.config.vocab_size + 1)
+        # Note: In transformers > 4.49.0, `self.bert` is loaded
+        #   as a meta tensors, so the model does not hold actual values. 
+        #   Therefore, the default setting `mean_resizing=True` causes an error 
+        #   because it cannot compute statistics for the existing embeddings.
+        #   For now, we avoid it by setting it to False.
+        self.bert.resize_token_embeddings(
+            self.bert.config.vocab_size + 1,
+            mean_resizing=False
+        )
         self.label_proj_layer = nn.Linear(
             self.bert.config.hidden_size,
             self.config.num_labels - 1
